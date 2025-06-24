@@ -14,6 +14,7 @@ user_topic_dictionary = {}
 user_post_number_dictionary = {}
 user_post_length_dictionary = {}
 user_state_dictionary = {}
+user_tone_dictionary = {}
 
 # Темы для поста (без сокращений)
 topic_list = [
@@ -70,6 +71,18 @@ post_length_keyboard = ReplyKeyboardMarkup(
     resize_keyboard=True,
     one_time_keyboard=False
 )
+tone_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="Обычно")],
+        [KeyboardButton(text="Воодушевляюще")],
+        [KeyboardButton(text="По-деловому")],
+        [KeyboardButton(text="Иронично")],
+        [KeyboardButton(text="Юмористически")]
+    ],
+    resize_keyboard=True,
+    one_time_keyboard=False
+)
+user_tone_dictionary = {}
 
 post_types_text = (
     "Выберите номер поста (вид):\n\n"
@@ -2034,6 +2047,17 @@ async def post_length_custom(message: types.Message):
     user_post_length_dictionary[user_id] = message.text
     await send_final_prompt(message)
 
+@dispatcher.message(lambda message: user_state_dictionary.get(message.from_user.id) == "wait_tone" and message.text in [
+    "Обычно", "Воодушевляюще", "По-деловому", "Иронично", "Юмористически"
+])
+async def tone_chosen(message: types.Message):
+    user_id = message.from_user.id
+    user_tone_dictionary[user_id] = message.text
+    user_state_dictionary[user_id] = "wait_topic"
+    await send_final_prompt(message)
+
+
+
 async def send_final_prompt(message: types.Message):
     user_id = message.from_user.id
     user_state_dictionary[user_id] = "wait_topic"
@@ -2043,12 +2067,14 @@ async def send_final_prompt(message: types.Message):
     post_title = post_types_list[post_number - 1]
     post_length = user_post_length_dictionary.get(user_id, "2100")
     post_structure = post_structures.get(post_number, "Структура для этого типа поста еще не задана.")
+    tone = user_tone_dictionary.get(user_id, "Обычно")
     prompt_text = (
         f"Ты — эксперт по digital-маркетингу и продвижению личного бренда в соцсетях.\n"
         f"Твоя задача — написать отличный пост для соцсетей для автора блогов по теме \"{topic}\", который уже ведёт аккаунт.\n"
         f"Тип поста: {post_title}\n"
         f"Пост должен быть создан по следующей структуре:\n{post_structure}\n"
         f"Длина поста около {post_length} символов.\n"
+        f"Стиль написания: {tone}."
         f"Пол автора: {gender}."
     )
     print(post_structure)
